@@ -28,11 +28,12 @@
   .refresh-btn:hover{background:#1d4ed8}
   .refresh-btn:disabled{opacity:.55;cursor:default}
 
-  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin:20px 0}
+  .stats{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin:20px 0}
   .stat{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px 18px;box-shadow:var(--shadow)}
   .stat .n{font-size:28px;font-weight:700}
   .stat .l{color:var(--muted);font-size:13px;margin-top:4px}
   .stat.new .n{color:var(--new)} .stat.changed .n{color:var(--changed)}
+  .stat.recall .n{color:var(--danger)}
 
   .controls{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:16px}
   .controls input[type=text]{
@@ -105,6 +106,46 @@
   .drop .d{font-size:12px;color:var(--muted);margin-top:3px}
   .drop .file{font-size:12px;color:var(--accent);margin-top:8px;font-weight:600}
 
+  /* ===== 회수 사례 (실제 시장 조치) ===== */
+  .rc{margin-top:18px;border-top:1px solid var(--line);padding-top:16px}
+  .rc-head{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+  .rc-head .t{font-size:15px;font-weight:700;display:flex;align-items:center;gap:7px}
+  .rc-head .t .cnt{font-size:12px;font-weight:600;color:var(--muted)}
+  .rc-tabs{display:flex;gap:6px}
+  .rc-tab{font-size:12px;padding:5px 11px;border-radius:999px;border:1px solid var(--line);
+    background:var(--panel);color:var(--muted);cursor:pointer;user-select:none;font-weight:600}
+  .rc-tab.on{background:var(--danger);border-color:var(--danger);color:#fff}
+  .rc-tab.on.kr{background:var(--kr);border-color:var(--kr)}
+  .rc-tab.on.fda{background:var(--fda);border-color:var(--fda)}
+
+  .rc-list{display:flex;flex-direction:column;gap:8px;max-height:420px;overflow-y:auto;padding-right:4px}
+  .rc-item{border:1px solid var(--line);border-left:3px solid var(--danger);border-radius:10px;
+    padding:10px 12px;background:var(--panel2)}
+  .rc-item.kr{border-left-color:var(--kr)} .rc-item.fda{border-left-color:var(--fda)}
+  .rc-item .r1{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+  /* FDA 제품설명은 라벨 전문이라 매우 길다 -> 2줄로 자르고 전문은 title 툴팁으로 */
+  .rc-item .pd{font-weight:600;font-size:13.5px;line-height:1.45;word-break:break-word;
+    display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .rc-item .dt{font-size:11.5px;color:var(--muted);white-space:nowrap;padding-top:2px}
+  .rc-item .fm{font-size:12.5px;color:var(--muted);margin-top:3px}
+  .rc-item .rs{font-size:12px;color:var(--text);margin-top:6px;line-height:1.5;
+    background:#fff;border:1px solid var(--line2);border-radius:7px;padding:6px 8px}
+  .rc-item .lot{font-size:11.5px;color:var(--muted);margin-top:5px;word-break:break-all}
+  .rc-tag{font-size:10.5px;font-weight:700;padding:2px 7px;border-radius:5px;border:1px solid;margin-right:5px;white-space:nowrap}
+  .rc-tag.kr{color:var(--kr);border-color:var(--kr)} .rc-tag.fda{color:var(--fda);border-color:var(--fda)}
+  .rc-tag.c1{background:#fee2e2;color:#b91c1c;border-color:#fca5a5}
+  .rc-tag.c2{background:#fef3c7;color:#b45309;border-color:#fcd34d}
+  .rc-tag.c3{background:#f1f5f9;color:var(--muted);border-color:var(--line)}
+
+  .rc-none{color:var(--muted);font-size:13px;line-height:1.7;background:var(--panel2);
+    border:1px dashed var(--line);border-radius:10px;padding:16px;text-align:center}
+  .rc-news{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+  .rc-news a{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;
+    text-decoration:none;color:var(--text);background:var(--panel);border:1px solid var(--line);
+    border-radius:9px;padding:8px 13px;box-shadow:var(--shadow);transition:.12s}
+  .rc-news a:hover{border-color:var(--accent);color:var(--accent)}
+  .badge.recall{background:#fee2e2;color:var(--danger);border:1px solid #fca5a5}
+
   .loading{color:var(--muted);padding:20px;text-align:center}
   .err{color:var(--danger);padding:16px;background:#fef2f2;border-radius:10px;border:1px solid #fecaca;font-size:13px;line-height:1.6}
   a{color:var(--accent)}
@@ -128,6 +169,7 @@
     <div class="chip" data-filter="new">🟢 신규</div>
     <div class="chip" data-filter="changed">🟡 변경</div>
     <div class="chip" data-filter="recent">🟣 최근공개(14일)</div>
+    <div class="chip" data-filter="recall">🔴 회수 이력</div>
     <div class="chip" data-filter="matched">🔵 자사 원료 해당</div>
   </div>
 
@@ -169,12 +211,62 @@
   const AGC_CLASS = {"국내":"kr","FDA":"fda","EMA":"ema"};
 
   let DATA = [];
+  let RECALLS = [];                 // 회수 사례 (식약처 CCBAI01 + openFDA)
+  let recallByImp = new Map();      // impurity.id -> 매칭된 회수 사례 배열
+  let recallTab = "all";            // 비교 패널의 기관 탭
   let selectedId = null;
   let filter = "all";
   let matchedIds = new Set();
   const RECENT_DAYS = 14;
   function daysAgo(s){ if(!s) return Infinity; return (Date.now()-new Date(s).getTime())/86400000; }
   function isRecent(d){ return d.agency_limits.some(a=>a.published_date && daysAgo(a.published_date)<=RECENT_DAYS); }
+  function esc(s){ return (s==null?"":String(s)).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+
+  // ===== 불순물 <-> 회수 사례 매칭 =====
+  //  회수사유 원문에 불순물명(또는 대문자 약어)이 그대로 적히는 점을 이용한다.
+  //  impurity_id 를 DB에 저장하지 않는 이유: 규제데이터_갱신.ps1 이 impurities 를
+  //  truncate/restart identity 하므로 id 가 갱신마다 바뀐다. 이름으로 매칭해야 안 깨진다.
+  const ABBR_STOP = new Set(["EP","USP","API","ICH","CAS","EMA","FDA","NDA","ANDA","MFDS",
+                             "PDE","TTC","EU","USA","HPLC","GCMS","CPCA","LCMS","WHO"]);
+  function normKey(s){ return (s||"").toLowerCase().replace(/[^a-z0-9]/g,""); }
+
+  // 불순물 1건에서 매칭 키를 뽑는다: 정규화된 전체명(8자 이상) + 괄호 안 대문자 약어(3자 이상)
+  function impKeys(d){
+    const full = normKey(d.name_en);
+    const abbrs = [];
+    (String(d.name_en||"").match(/\(([^)]+)\)/g) || []).forEach(g=>{
+      g.slice(1,-1).split(",").map(t=>t.trim()).forEach(t=>{
+        if(/^[A-Z][A-Z0-9-]{2,9}$/.test(t) && !ABBR_STOP.has(t.toUpperCase())){
+          abbrs.push(new RegExp("\\b"+t.replace(/[.*+?^${}()|[\]\\-]/g,"\\$&")+"\\b","i"));
+        }
+      });
+    });
+    return { full: full.length>=8 ? full : null, abbrs };
+  }
+
+  // 로드 직후 한 번만 전량 매칭해 두고, 이후에는 Map 조회만 한다.
+  function buildRecallIndex(){
+    recallByImp = new Map();
+    if(!RECALLS.length || !DATA.length) return;
+    RECALLS.forEach(r=>{ r._rk = normKey(r.reason); });
+    DATA.forEach(d=>{
+      const K = impKeys(d);
+      if(!K.full && !K.abbrs.length) return;
+      const hits = RECALLS.filter(r=>
+        (K.full && r._rk.includes(K.full)) || K.abbrs.some(re=>re.test(r.reason||""))
+      );
+      if(hits.length){
+        // 국내 사용자가 보는 화면이므로 국내 건을 먼저, 그 안에서 최신순.
+        hits.sort((a,b)=>{
+          const ra = a.agency==="국내"?0:1, rb = b.agency==="국내"?0:1;
+          if(ra!==rb) return ra-rb;
+          return String(b.recall_date||"").localeCompare(String(a.recall_date||""));
+        });
+        recallByImp.set(d.id, hits);
+      }
+    });
+  }
+  function recallsOf(d){ return recallByImp.get(d.id) || []; }
 
   async function api(path){
     const res = await fetch(SUPABASE_URL + "/rest/v1/" + path, {
@@ -187,6 +279,11 @@
   async function load(){
     try{
       DATA = await api("impurities?select=id,name_en,iupac,cas_no,source_material,agency_limits(agency,ai_limit_ng_day,ai_limit_note,cpca,published_date,source_url,change_status)&order=name_en");
+      // 회수 사례는 부가 정보이므로, 실패해도 규제 비교 화면은 그대로 뜨게 한다.
+      try{
+        RECALLS = await api("recalls?select=agency,ext_id,product,firm,reason,classification,lot_info,quantity,recall_date&order=recall_date.desc&limit=2000");
+      }catch(e){ RECALLS = []; console.warn("회수 사례 로드 실패:", e.message); }
+      buildRecallIndex();
       renderStats(); renderList(); if(selectedId) renderCmp();
       const dates = DATA.flatMap(d=>d.agency_limits.map(a=>a.published_date)).filter(Boolean).sort();
       let dbUpdated = "—";
@@ -209,17 +306,21 @@
     const nNew = DATA.filter(d=>statusOf(d)==="new").length;
     const nChg = DATA.filter(d=>statusOf(d)==="changed").length;
     const nRecent = DATA.filter(isRecent).length;
+    const nRecallImp = DATA.filter(d=>recallsOf(d).length).length;
     document.getElementById("stats").innerHTML = `
       <div class="stat"><div class="n">${total}</div><div class="l">등재 불순물</div></div>
       <div class="stat new"><div class="n">${nNew}</div><div class="l">신규 (직전 갱신 대비)</div></div>
       <div class="stat changed"><div class="n">${nChg}</div><div class="l">변경 (직전 갱신 대비)</div></div>
-      <div class="stat"><div class="n">${nRecent}</div><div class="l">최근공개 (${RECENT_DAYS}일)</div></div>`;
+      <div class="stat"><div class="n">${nRecent}</div><div class="l">최근공개 (${RECENT_DAYS}일)</div></div>
+      <div class="stat recall" title="식약처 회수·판매중지 목록과 미국 openFDA 회수 기록에서 수집">
+        <div class="n">${RECALLS.length}</div><div class="l">회수 사례 (${nRecallImp}종 해당)</div></div>`;
   }
 
   function passFilter(d){
     if(filter==="new") return statusOf(d)==="new";
     if(filter==="changed") return statusOf(d)==="changed";
     if(filter==="recent") return isRecent(d);
+    if(filter==="recall") return recallsOf(d).length>0;
     if(filter==="matched") return matchedIds.has(d.id);
     return true;
   }
@@ -243,8 +344,10 @@
       const badge = st==="new"?'<span class="badge new">신규</span>':st==="changed"?'<span class="badge changed">변경</span>':'';
       const match = matchedIds.has(d.id)?'<span class="badge match">해당</span>':'';
       const rec = isRecent(d)?'<span class="badge recent">최근</span>':'';
+      const nRc = recallsOf(d).length;
+      const rcB = nRc?`<span class="badge recall" title="이 불순물로 인한 회수 사례 ${nRc}건">회수 ${nRc}</span>`:'';
       return `<div class="imp ${d.id===selectedId?'sel':''} ${st?'hl-'+st:''} ${matchedIds.has(d.id)?'matched':''}" data-id="${d.id}">
-        <div class="top"><span class="nm">${d.name_en}</span><span>${match}${rec}${badge}</span></div>
+        <div class="top"><span class="nm">${d.name_en}</span><span>${rcB}${match}${rec}${badge}</span></div>
         <div class="cas">CAS ${d.cas_no||'—'}</div>
         <div class="src">발생 성분: ${d.source_material||'—'}</div>
         <div class="agc-dots">
@@ -254,7 +357,7 @@
         </div>
       </div>`;
     }).join("");
-    document.querySelectorAll(".imp").forEach(el=>el.onclick=()=>{selectedId=+el.dataset.id;renderList();renderCmp();});
+    document.querySelectorAll(".imp").forEach(el=>el.onclick=()=>{selectedId=+el.dataset.id;recallTab="all";renderList();renderCmp();});
   }
 
   function renderCmp(){
@@ -280,7 +383,92 @@
         <div class="nm">${d.name_en}</div>
         <div class="meta">IUPAC: ${d.iupac||'—'}<br>CAS ${d.cas_no||'—'} &nbsp;|&nbsp; 발생 성분: ${d.source_material||'—'}</div>
       </div>
-      <div class="cmp-grid">${cards}</div>`;
+      <div class="cmp-grid">${cards}</div>
+      ${renderRecalls(d)}`;
+
+    // 기관 탭 (전체 / 국내 / FDA)
+    document.querySelectorAll(".rc-tab").forEach(el=>el.onclick=()=>{ recallTab = el.dataset.tab; renderCmp(); });
+  }
+
+  // ===== 이 불순물 때문에 실제로 회수된 사례 =====
+  //  뉴스 기사는 브라우저에서 직접 못 긁는다(CORS). 대신 검색 링크를 열어준다.
+  function newsTerms(d){
+    const sm = String(d.source_material||"").trim();
+    let ko = "", en = "";
+    if(sm && sm !== "-"){
+      const m = sm.match(/^([^(]+?)\s*\(([^)]+)\)/);
+      if(m){ ko = m[1].trim(); en = m[2].trim(); }
+      else if(/[가-힣]/.test(sm)){ ko = sm; }
+      else { en = sm; }
+    }
+    return { ko: ko || d.name_en, en: en || (/[가-힣]/.test(sm)?d.name_en:sm) || d.name_en };
+  }
+
+  // 개별 회수 건의 원문으로 가는 링크.
+  //  국내: nedrug 의 상세 URL(getItem?targetItemSeq=)은 302로 튕겨서 딥링크가 안 된다.
+  //        대신 제품명으로 필터한 회수 목록을 연다.
+  //  FDA : openFDA 에는 건별 페이지가 없어 회수번호로 검색을 연다.
+  function itemLink(r){
+    if(r.agency === "국내"){
+      const key = String(r.product||"").split("(")[0].replace(/[.…]+$/,"").trim().slice(0,12);
+      return "https://nedrug.mfds.go.kr/pbp/CCBAI01/getList?searchYn=true&page=1&limit=10&itemName=" + encodeURIComponent(key);
+    }
+    return "https://www.google.com/search?q=" + encodeURIComponent('FDA recall "' + (r.ext_id||r.firm||"") + '"');
+  }
+
+  function renderRecalls(d){
+    const all = recallsOf(d);
+    const nKr = all.filter(r=>r.agency==="국내").length;
+    const nUs = all.filter(r=>r.agency==="FDA").length;
+    const rows = recallTab==="all" ? all : all.filter(r=>r.agency===recallTab);
+
+    const t = newsTerms(d);
+    const gnKo = "https://news.google.com/search?q=" + encodeURIComponent(t.ko + " 니트로사민 회수") + "&hl=ko&gl=KR&ceid=KR:ko";
+    const gnEn = "https://news.google.com/search?q=" + encodeURIComponent(t.en + " nitrosamine recall") + "&hl=en-US&gl=US&ceid=US:en";
+    const mfds = "https://nedrug.mfds.go.kr/pbp/CCBAI01/getList?searchYn=true&itemName=";
+    const news = `<div class="rc-news">
+        <a href="${esc(gnKo)}" target="_blank" rel="noopener">📰 국내 뉴스 검색 ↗</a>
+        <a href="${esc(gnEn)}" target="_blank" rel="noopener">🌐 해외 뉴스 검색 ↗</a>
+        <a href="${esc(mfds)}" target="_blank" rel="noopener">🏛 식약처 회수 목록 ↗</a>
+      </div>`;
+
+    if(!all.length){
+      return `<div class="rc">
+        <div class="rc-head"><div class="t">⚠️ 회수 사례 <span class="cnt">0건</span></div></div>
+        <div class="rc-none">수집된 회수 사례가 없습니다.<br>
+          <span style="font-size:12px">회수사유에 이 불순물명이 명시된 건만 자동 연결됩니다.
+          (‘니트로사민류 불순물’처럼 물질이 특정되지 않은 회수는 제외)</span></div>
+        ${news}</div>`;
+    }
+
+    const items = rows.map(r=>{
+      const kls = r.agency==="국내" ? "kr" : "fda";
+      const cn = /I\b/.test(r.classification||"") && !/II/.test(r.classification||"") ? "c1"
+               : /III/.test(r.classification||"") ? "c3" : /II/.test(r.classification||"") ? "c2" : "";
+      const cls = r.classification ? `<span class="rc-tag ${cn}">${esc(r.classification)}</span>` : "";
+      const drop = v => (!v || /^(n\/?a|없음|-)$/i.test(String(v).trim())) ? null : v;
+      const lot = [drop(r.lot_info), drop(r.quantity)].filter(Boolean).join(" · ");
+      return `<div class="rc-item ${kls}">
+        <div class="r1">
+          <div class="pd" title="${esc(r.product||"")}"><span class="rc-tag ${kls}">${esc(r.agency)}</span>${cls}${esc(r.product||"—")}</div>
+          <div class="dt">${esc(r.recall_date||"—")}</div>
+        </div>
+        <div class="fm">🏭 ${esc(r.firm||"—")} &nbsp;<a href="${esc(itemLink(r))}" target="_blank" rel="noopener">원문 ↗</a></div>
+        <div class="rs">${esc(r.reason||"")}</div>
+        ${lot?`<div class="lot">${esc(lot)}</div>`:""}
+      </div>`;
+    }).join("");
+
+    const tab = (k,label,n)=>`<div class="rc-tab ${k==='국내'?'kr':k==='FDA'?'fda':''} ${recallTab===k?'on':''}" data-tab="${k}">${label} ${n}</div>`;
+    return `<div class="rc">
+      <div class="rc-head">
+        <div class="t">⚠️ 이 불순물로 인한 회수 사례 <span class="cnt">총 ${all.length}건</span></div>
+        <div class="rc-tabs">
+          ${tab("all","전체",all.length)}${tab("국내","국내",nKr)}${tab("FDA","FDA",nUs)}
+        </div>
+      </div>
+      <div class="rc-list">${items || '<div class="rc-none">해당 기관의 회수 사례가 없습니다.</div>'}</div>
+      ${news}</div>`;
   }
 
   function runMatch(){
