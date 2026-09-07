@@ -88,6 +88,8 @@
   .agc .row b{color:var(--text);font-weight:600;text-align:right}
   .agc.na{opacity:.6}
   .agc.na .limit{font-size:15px;color:var(--muted)}
+  /* 등재는 됐지만 수치 한도가 없는 경우(예: 식약처 "ICH Q3A/Q3B에 따라 관리") */
+  .agc .nolimit{font-size:15px;font-weight:700;color:var(--muted)}
 
   .mat{margin-top:18px;border-top:1px solid var(--line);padding-top:16px}
   .mat textarea{width:100%;min-height:64px;background:var(--panel2);border:1px solid var(--line);
@@ -366,7 +368,8 @@
     const cards = AGENCIES.map(ag=>{
       const a = d.agency_limits.find(x=>x.agency===ag);
       if(!a) return `<div class="agc ${AGC_CLASS[ag]} na"><div class="an">${ag}</div><div class="limit">미등재</div><div class="row"><span>상태</span><b>—</b></div></div>`;
-      const limit = a.ai_limit_ng_day!=null ? a.ai_limit_ng_day+' <span class="unit">ng/day</span>' : (a.ai_limit_note||'—');
+      // 수치 한도가 없으면(한도 미설정) 숫자 자리에 문구를 넣고, 근거는 아래 비고 줄에서 보여준다.
+      const limit = a.ai_limit_ng_day!=null ? a.ai_limit_ng_day+' <span class="unit">ng/day</span>' : '<span class="nolimit">한도 미설정</span>';
       const stBadge = a.change_status==="new"?'<span class="badge new">신규</span>':a.change_status==="changed"?'<span class="badge changed">변경</span>':'';
       const recBadge = (a.published_date && daysAgo(a.published_date)<=RECENT_DAYS)?'<span class="badge recent">최근</span>':'';
       return `<div class="agc ${AGC_CLASS[ag]}">
@@ -374,7 +377,7 @@
         <div class="limit">${limit}</div>
         <div class="row"><span>CPCA 분류</span><b>${a.cpca||'—'}</b></div>
         <div class="row"><span>공개일</span><b>${a.published_date||'—'}</b></div>
-        ${a.ai_limit_note&&a.ai_limit_ng_day!=null?`<div class="row"><span>비고</span><b>${a.ai_limit_note}</b></div>`:''}
+        ${a.ai_limit_note?`<div class="row"><span>비고</span><b>${a.ai_limit_note}</b></div>`:''}
         <div class="row"><span>출처</span><b><a href="${a.source_url}" target="_blank">사이트 ↗</a></b></div>
       </div>`;
     }).join("");
